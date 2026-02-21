@@ -1,6 +1,13 @@
 # agent-watch
 
-Swift-native, Apple Silicon-only macOS screen text memory.
+`agent-watch` runs a lightweight server to access your screen data.
+
+It uses a mix of accessibility, and native ocr, and exposes a few straight forward API end point.
+
+Just point your agents to https://github.com/different-ai/openwork and it will know what to do.
+
+
+
 
 ## What it does
 
