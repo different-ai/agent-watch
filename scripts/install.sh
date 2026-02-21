@@ -69,5 +69,6 @@ echo "  open \"x-apple.systempreferences:com.apple.preference.security?Privacy_A
 echo "  open \"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture\""
 echo ""
 echo "Quick start:"
-echo "  agent-watch capture-once"
+echo "  agent-watch capture-now"
+echo "  agent-watch search-buffer-ocr \"invoice\" --seconds 120 --limit 5"
 echo "  agent-watch serve --host 127.0.0.1 --port 41733"

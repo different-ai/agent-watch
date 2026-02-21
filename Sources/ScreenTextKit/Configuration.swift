@@ -9,17 +9,23 @@ public struct ScreenTextConfiguration: Codable, Sendable {
     public var ocrEnabled: Bool
     public var minimumAccessibilityChars: Int
     public var duplicateWindowSeconds: Int
+    public var frameBufferEnabled: Bool
+    public var frameBufferIntervalSeconds: Int
+    public var frameBufferRetentionSeconds: Int
     public var ignoredApps: [String]
 
     public static let `default` = ScreenTextConfiguration(
-        retentionDays: 30,
+        retentionDays: 14,
         maxDatabaseSizeMB: 200,
         idleGapSeconds: 30,
         activeGapSeconds: 10,
         minCaptureIntervalMS: 200,
-        ocrEnabled: true,
+        ocrEnabled: false,
         minimumAccessibilityChars: 12,
         duplicateWindowSeconds: 2,
+        frameBufferEnabled: true,
+        frameBufferIntervalSeconds: 5,
+        frameBufferRetentionSeconds: 120,
         ignoredApps: []
     )
 
@@ -28,7 +34,28 @@ public struct ScreenTextConfiguration: Codable, Sendable {
 
         if FileManager.default.fileExists(atPath: paths.configURL.path) {
             let data = try Data(contentsOf: paths.configURL)
-            return try JSONDecoder().decode(ScreenTextConfiguration.self, from: data)
+            let decoder = JSONDecoder()
+            if let current = try? decoder.decode(ScreenTextConfiguration.self, from: data) {
+                return current
+            }
+
+            let legacy = try decoder.decode(LegacyScreenTextConfiguration.self, from: data)
+            let upgraded = ScreenTextConfiguration(
+                retentionDays: legacy.retentionDays,
+                maxDatabaseSizeMB: legacy.maxDatabaseSizeMB,
+                idleGapSeconds: legacy.idleGapSeconds,
+                activeGapSeconds: legacy.activeGapSeconds,
+                minCaptureIntervalMS: legacy.minCaptureIntervalMS,
+                ocrEnabled: legacy.ocrEnabled,
+                minimumAccessibilityChars: legacy.minimumAccessibilityChars,
+                duplicateWindowSeconds: legacy.duplicateWindowSeconds,
+                frameBufferEnabled: ScreenTextConfiguration.default.frameBufferEnabled,
+                frameBufferIntervalSeconds: ScreenTextConfiguration.default.frameBufferIntervalSeconds,
+                frameBufferRetentionSeconds: ScreenTextConfiguration.default.frameBufferRetentionSeconds,
+                ignoredApps: legacy.ignoredApps
+            )
+            try upgraded.save(paths: paths)
+            return upgraded
         }
 
         let config = ScreenTextConfiguration.default
@@ -60,6 +87,12 @@ public struct ScreenTextConfiguration: Codable, Sendable {
             minimumAccessibilityChars = try value.asInt(min: 1)
         case "duplicate_window_seconds":
             duplicateWindowSeconds = try value.asInt(min: 0)
+        case "frame_buffer_enabled":
+            frameBufferEnabled = try value.asBool()
+        case "frame_buffer_interval_seconds":
+            frameBufferIntervalSeconds = try value.asInt(min: 2)
+        case "frame_buffer_retention_seconds":
+            frameBufferRetentionSeconds = try value.asInt(min: 10)
         case "ignored_apps":
             ignoredApps = value
                 .split(separator: ",")
@@ -69,6 +102,18 @@ public struct ScreenTextConfiguration: Codable, Sendable {
             throw ConfigurationError.unknownKey(key)
         }
     }
+}
+
+private struct LegacyScreenTextConfiguration: Codable {
+    var retentionDays: Int
+    var maxDatabaseSizeMB: Int
+    var idleGapSeconds: Int
+    var activeGapSeconds: Int
+    var minCaptureIntervalMS: Int
+    var ocrEnabled: Bool
+    var minimumAccessibilityChars: Int
+    var duplicateWindowSeconds: Int
+    var ignoredApps: [String]
 }
 
 public enum ConfigurationError: Error, CustomStringConvertible {

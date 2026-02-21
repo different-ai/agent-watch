@@ -33,7 +33,7 @@ struct AgentWatchCLI {
             try runUninstall(paths: paths, arguments: subArgs)
         case "status":
             try runStatus(paths: paths)
-        case "capture-once":
+        case "capture-once", "capture-now":
             try runCaptureOnce(paths: paths, arguments: subArgs)
         case "daemon":
             try runDaemon(paths: paths)
@@ -43,6 +43,8 @@ struct AgentWatchCLI {
             try runIngest(paths: paths, arguments: subArgs)
         case "search":
             try runSearch(paths: paths, arguments: subArgs)
+        case "search-buffer-ocr":
+            try runSearchBufferOCR(paths: paths, arguments: subArgs)
         case "purge":
             try runPurge(paths: paths, arguments: subArgs)
         case "config":
@@ -161,7 +163,22 @@ struct AgentWatchCLI {
             duplicateWindowSeconds: TimeInterval(config.duplicateWindowSeconds)
         )
 
-        let daemon = DaemonRunner(pipeline: pipeline, idleInterval: TimeInterval(config.idleGapSeconds))
+        let interval = max(config.frameBufferIntervalSeconds, 2)
+        let maxFrames = max(1, config.frameBufferRetentionSeconds / interval) + 4
+        let frameBufferStore: FrameBufferStore? = config.frameBufferEnabled
+            ? FrameBufferStore(
+                paths: paths,
+                retentionSeconds: config.frameBufferRetentionSeconds,
+                maxFrames: maxFrames
+            )
+            : nil
+
+        let daemon = DaemonRunner(
+            pipeline: pipeline,
+            idleInterval: TimeInterval(config.idleGapSeconds),
+            frameBufferStore: frameBufferStore,
+            frameBufferInterval: TimeInterval(interval)
+        )
         _ = daemon.run()
     }
 
@@ -219,6 +236,44 @@ struct AgentWatchCLI {
         }
     }
 
+    private static func runSearchBufferOCR(paths: ScreenTextPaths, arguments: [String]) throws {
+        guard let query = arguments.first else {
+            throw CLIError.message("search-buffer-ocr requires a query")
+        }
+
+        let config = try ScreenTextConfiguration.loadOrCreate(paths: paths)
+        let options = try ParsedOptions(arguments: Array(arguments.dropFirst()))
+
+        let withinSeconds = parseIntOption(
+            options.values["seconds"],
+            defaultValue: config.frameBufferRetentionSeconds,
+            minimum: 10
+        )
+        let limit = parseIntOption(options.values["limit"], defaultValue: 10, minimum: 1)
+
+        let interval = max(config.frameBufferIntervalSeconds, 2)
+        let maxFrames = max(1, config.frameBufferRetentionSeconds / interval) + 4
+        let frameBufferStore = FrameBufferStore(
+            paths: paths,
+            retentionSeconds: config.frameBufferRetentionSeconds,
+            maxFrames: maxFrames
+        )
+
+        let searcher = FrameBufferOCRSearcher(frameBufferStore: frameBufferStore)
+        let hits = try searcher.search(query: query, withinSeconds: withinSeconds, limit: min(limit, 50))
+
+        if hits.isEmpty {
+            print("No OCR matches found in recent frame buffer.")
+            return
+        }
+
+        for hit in hits {
+            print("[\(isoString(hit.timestamp))] \(hit.snippet)")
+            print("frame: \(hit.framePath)")
+            print("---")
+        }
+    }
+
     private static func runPurge(paths: ScreenTextPaths, arguments: [String]) throws {
         let options = try ParsedOptions(arguments: arguments)
         let raw = try options.requiredValue(for: "older-than")
@@ -267,6 +322,18 @@ struct AgentWatchCLI {
         return days
     }
 
+    private static func parseIntOption(_ raw: String?, defaultValue: Int, minimum: Int) -> Int {
+        guard let raw else {
+            return defaultValue
+        }
+
+        guard let parsed = Int(raw), parsed >= minimum else {
+            return defaultValue
+        }
+
+        return parsed
+    }
+
     private static func isoString(_ date: Date) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -285,10 +352,12 @@ struct AgentWatchCLI {
               uninstall [--delete-data]
               status
               capture-once [--force-ocr]
+              capture-now [--force-ocr]
               daemon
               serve [--host 127.0.0.1] [--port 41733]
               ingest --text <value> [--app <name>] [--window <title>] [--source <accessibility|ocr|synthetic>] [--trigger <manual|app_switch|...>]
               search <query> [--limit <n>] [--app <name>]
+              search-buffer-ocr <query> [--seconds <n>] [--limit <n>]
               purge --older-than <Nd>
               config show
               config set <key> <value>

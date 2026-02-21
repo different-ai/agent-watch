@@ -22,6 +22,7 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("ApplicationServices"),
                 .linkedFramework("CoreGraphics"),
+                .linkedFramework("ImageIO"),
                 .linkedFramework("Network"),
                 .linkedFramework("Vision"),
             ]

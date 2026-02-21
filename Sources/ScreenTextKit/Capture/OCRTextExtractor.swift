@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import Vision
 
 public final class OCRTextExtractor {
@@ -15,6 +16,22 @@ public final class OCRTextExtractor {
         guard let image = CGDisplayCreateImage(CGMainDisplayID()) else {
             return nil
         }
+
+        return try extractText(from: image)
+    }
+
+    public func extractText(fromImageURL imageURL: URL) throws -> String? {
+        guard
+            let source = CGImageSourceCreateWithURL(imageURL as CFURL, nil),
+            let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        else {
+            return nil
+        }
+
+        return try extractText(from: image)
+    }
+
+    public func extractText(from image: CGImage) throws -> String? {
 
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = recognitionLevel

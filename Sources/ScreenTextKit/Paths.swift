@@ -5,6 +5,7 @@ public struct ScreenTextPaths: Sendable {
     public let databaseURL: URL
     public let configURL: URL
     public let logsDirectory: URL
+    public let frameBufferDirectory: URL
 
     public init(baseDirectoryOverride: URL? = nil, environment: [String: String] = ProcessInfo.processInfo.environment) {
         if let override = baseDirectoryOverride {
@@ -24,10 +25,12 @@ public struct ScreenTextPaths: Sendable {
         databaseURL = baseDirectory.appendingPathComponent("agent_watch.db", isDirectory: false)
         configURL = baseDirectory.appendingPathComponent("config.json", isDirectory: false)
         logsDirectory = baseDirectory.appendingPathComponent("logs", isDirectory: true)
+        frameBufferDirectory = baseDirectory.appendingPathComponent("frame-buffer", isDirectory: true)
     }
 
     public func ensureBaseDirectory() throws {
         try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: logsDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: frameBufferDirectory, withIntermediateDirectories: true)
     }
 }

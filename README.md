@@ -5,9 +5,11 @@ Swift-native, Apple Silicon-only macOS screen text memory.
 ## What it does
 
 - Captures text from your active screen context.
-- Uses Accessibility APIs first, Vision OCR fallback second.
+- Uses Accessibility APIs in the daemon by default.
+- Uses Vision OCR on demand (`capture-now --force-ocr` or `search-buffer-ocr`).
 - Stores text and metadata only in local SQLite (FTS5 search).
 - Ships CLI-first (`agent-watch`) with launchd daemon support.
+- Keeps a short rolling frame buffer to recover recent text after you switch away.
 
 No audio, no screenshot storage, no cloud dependency.
 
@@ -37,6 +39,14 @@ Optional persistent launchd install:
 AGENT_WATCH_INSTALL_LAUNCHD=1 bash scripts/install.sh
 ```
 
+## Low-CPU defaults (simple mode)
+
+- Capture triggers: app switch + idle timer.
+- Idle timer default: `30s`.
+- Daemon OCR default: disabled (`ocr_enabled=false`).
+- Rolling frame buffer: enabled, `5s` interval, `120s` retention.
+- Retention default: `14` days.
+
 ## Build
 
 ```bash
@@ -52,6 +62,7 @@ bash scripts/build.sh
 bash scripts/doctor.sh
 bash scripts/capture-once.sh
 bash scripts/search.sh "invoice"
+bash scripts/search-buffer-ocr.sh "invoice" --seconds 120 --limit 10
 bash scripts/run-daemon.sh
 bash scripts/run-api.sh
 bash scripts/restart.sh
@@ -69,7 +80,9 @@ Common commands:
 ```bash
 swift run agent-watch doctor
 swift run agent-watch capture-once
+swift run agent-watch capture-now
 swift run agent-watch capture-once --force-ocr
+swift run agent-watch search-buffer-ocr "alex" --seconds 120 --limit 10
 swift run agent-watch search "invoice"
 swift run agent-watch ingest --text "manual line" --app "Notes"
 swift run agent-watch status
@@ -134,6 +147,29 @@ Legacy fallback variable is also supported:
 
 ```bash
 SCREENTEXT_DATA_DIR=/tmp/agent-watch swift run agent-watch status
+```
+
+## Practical OCR commands
+
+Capture one immediate OCR snapshot:
+
+```bash
+agent-watch capture-now --force-ocr
+```
+
+Search recent buffered screenshots (on demand OCR):
+
+```bash
+agent-watch search-buffer-ocr "your phrase" --seconds 120 --limit 10
+```
+
+Useful config toggles:
+
+```bash
+agent-watch config set ocr_enabled false
+agent-watch config set frame_buffer_interval_seconds 5
+agent-watch config set frame_buffer_retention_seconds 120
+agent-watch config set retention_days 14
 ```
 
 ## Tests
