@@ -34,9 +34,11 @@ struct ScreenTextCLI {
         case "status":
             try runStatus(paths: paths)
         case "capture-once":
-            try runCaptureOnce(paths: paths)
+            try runCaptureOnce(paths: paths, arguments: subArgs)
         case "daemon":
             try runDaemon(paths: paths)
+        case "serve":
+            try runServe(paths: paths, arguments: subArgs)
         case "ingest":
             try runIngest(paths: paths, arguments: subArgs)
         case "search":
@@ -52,9 +54,16 @@ struct ScreenTextCLI {
 
     private static func runDoctor() throws {
         let snapshot = PermissionDoctor.snapshot()
+        let probe = PermissionDoctor.probeScreenRecording()
 
         print("Accessibility: \(snapshot.accessibilityGranted ? "granted" : "denied")")
         print("Screen recording: \(snapshot.screenRecordingGranted ? "granted" : "denied")")
+        if probe.granted {
+            let hash = probe.sampleHash?.prefix(16) ?? "none"
+            print("Screen probe: \(probe.width)x\(probe.height), bytes=\(probe.byteCount), sample_hash_prefix=\(hash)")
+        } else {
+            print("Screen probe: unavailable")
+        }
     }
 
     private static func runInstall(paths: ScreenTextPaths) throws {
@@ -99,12 +108,16 @@ struct ScreenTextCLI {
         print("Screen recording: \(snapshot.screenRecordingGranted ? "granted" : "denied")")
     }
 
-    private static func runCaptureOnce(paths: ScreenTextPaths) throws {
+    private static func runCaptureOnce(paths: ScreenTextPaths, arguments: [String]) throws {
+        let options = try ParsedOptions(arguments: arguments)
+        let forceOCR = options.flags.contains("force-ocr")
+
         let config = try ScreenTextConfiguration.loadOrCreate(paths: paths)
         let store = try SQLiteStore(paths: paths)
         let extractor = NativeTextExtractor(
             minimumAccessibilityChars: config.minimumAccessibilityChars,
-            ocrEnabled: config.ocrEnabled
+            ocrEnabled: config.ocrEnabled,
+            forceOCR: forceOCR
         )
 
         let pipeline = CapturePipeline(
@@ -122,6 +135,16 @@ struct ScreenTextCLI {
         case .skippedNoText:
             print("No text captured")
         }
+    }
+
+    private static func runServe(paths: ScreenTextPaths, arguments: [String]) throws {
+        let options = try ParsedOptions(arguments: arguments)
+        let host = options.values["host"] ?? "127.0.0.1"
+        let port = Int(options.values["port"] ?? "41733") ?? 41733
+
+        let store = try SQLiteStore(paths: paths)
+        let server = ScreenTextAPIServer(host: host, port: port, store: store)
+        _ = try server.run()
     }
 
     private static func runDaemon(paths: ScreenTextPaths) throws {
@@ -261,8 +284,9 @@ struct ScreenTextCLI {
               install
               uninstall [--delete-data]
               status
-              capture-once
+              capture-once [--force-ocr]
               daemon
+              serve [--host 127.0.0.1] [--port 41733]
               ingest --text <value> [--app <name>] [--window <title>] [--source <accessibility|ocr|synthetic>] [--trigger <manual|app_switch|...>]
               search <query> [--limit <n>] [--app <name>]
               purge --older-than <Nd>

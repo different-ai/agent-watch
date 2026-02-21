@@ -4,9 +4,11 @@ import Vision
 
 public final class OCRTextExtractor {
     private let minimumTextHeight: Float
+    private let recognitionLevel: VNRequestTextRecognitionLevel
 
-    public init(minimumTextHeight: Float = 0.015) {
+    public init(minimumTextHeight: Float = 0.005, recognitionLevel: VNRequestTextRecognitionLevel = .accurate) {
         self.minimumTextHeight = minimumTextHeight
+        self.recognitionLevel = recognitionLevel
     }
 
     public func extractText() throws -> String? {
@@ -15,9 +17,9 @@ public final class OCRTextExtractor {
         }
 
         let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .fast
+        request.recognitionLevel = recognitionLevel
         request.minimumTextHeight = minimumTextHeight
-        request.usesLanguageCorrection = false
+        request.usesLanguageCorrection = true
 
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
         try handler.perform([request])

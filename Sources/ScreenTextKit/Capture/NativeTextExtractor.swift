@@ -6,27 +6,32 @@ public final class NativeTextExtractor: TextExtractor {
     private let ocrExtractor: OCRTextExtractor
     private let minimumAccessibilityChars: Int
     private let ocrEnabled: Bool
+    private let forceOCR: Bool
 
     public init(
         metadataProvider: NativeMetadataProvider = NativeMetadataProvider(),
         accessibilityExtractor: AccessibilityTextExtractor = AccessibilityTextExtractor(),
         ocrExtractor: OCRTextExtractor = OCRTextExtractor(),
         minimumAccessibilityChars: Int,
-        ocrEnabled: Bool
+        ocrEnabled: Bool,
+        forceOCR: Bool = false
     ) {
         self.metadataProvider = metadataProvider
         self.accessibilityExtractor = accessibilityExtractor
         self.ocrExtractor = ocrExtractor
         self.minimumAccessibilityChars = minimumAccessibilityChars
         self.ocrEnabled = ocrEnabled
+        self.forceOCR = forceOCR
     }
 
     public func extract() throws -> ExtractedText? {
         let metadata = metadataProvider.currentMetadata()
 
-        if let accessibilityText = accessibilityExtractor.extractText(),
-           accessibilityText.count >= minimumAccessibilityChars {
-            return ExtractedText(text: accessibilityText, source: .accessibility, metadata: metadata)
+        if !forceOCR {
+            if let accessibilityText = accessibilityExtractor.extractText(),
+               accessibilityText.count >= minimumAccessibilityChars {
+                return ExtractedText(text: accessibilityText, source: .accessibility, metadata: metadata)
+            }
         }
 
         guard ocrEnabled else {

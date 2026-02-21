@@ -34,11 +34,44 @@ Common commands:
 ```bash
 swift run screentext doctor
 swift run screentext capture-once
+swift run screentext capture-once --force-ocr
 swift run screentext search "invoice"
 swift run screentext ingest --text "manual line" --app "Notes"
 swift run screentext status
 swift run screentext purge --older-than 30d
 ```
+
+## Local HTTP API
+
+Start API server (loopback-only by default):
+
+```bash
+swift run screentext serve --host 127.0.0.1 --port 41733
+```
+
+Routes:
+
+- `GET /health`
+- `GET /status`
+- `GET /search?q=<query>&limit=<n>&app=<name>`
+- `GET /screen-recording/probe`
+
+Examples:
+
+```bash
+curl -s "http://127.0.0.1:41733/health"
+curl -s "http://127.0.0.1:41733/status"
+curl -s "http://127.0.0.1:41733/search?q=invoice&limit=10"
+curl -s "http://127.0.0.1:41733/screen-recording/probe"
+```
+
+Screen recording proof from CLI:
+
+```bash
+swift run screentext doctor
+```
+
+`doctor` prints permission status and a frame probe summary (resolution, byte count, and sample hash prefix).
 
 ## Data directory
 
