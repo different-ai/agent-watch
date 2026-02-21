@@ -15,11 +15,11 @@ cleanup() {
 
 trap cleanup EXIT
 
-export SCREENTEXT_DATA_DIR="$TEMP_DIR/data"
+export AGENT_WATCH_DATA_DIR="$TEMP_DIR/data"
 
 swift build --configuration release --package-path "$ROOT_DIR" >/dev/null
 
-BIN="$ROOT_DIR/.build/release/screentext"
+BIN="$ROOT_DIR/.build/release/agent-watch"
 
 "$BIN" ingest --text "invoice number 4832 from safari" --app "Safari" --window "Invoices"
 "$BIN" ingest --text "compiler error unresolved identifier" --app "Xcode" --window "Build"

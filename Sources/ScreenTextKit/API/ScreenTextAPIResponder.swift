@@ -23,7 +23,7 @@ struct ScreenTextAPIResponder {
         do {
             switch request.path {
             case "/health":
-                return json(statusCode: 200, reason: "OK", payload: HealthPayload(ok: true, service: "screentext", version: "0.1.0"))
+                return json(statusCode: 200, reason: "OK", payload: HealthPayload(ok: true, service: "agent-watch", version: "0.1.0"))
 
             case "/status":
                 let status = try store.status()

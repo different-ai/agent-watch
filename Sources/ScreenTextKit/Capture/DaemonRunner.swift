@@ -6,7 +6,7 @@ import os
 public final class DaemonRunner {
     private let pipeline: CapturePipeline
     private let idleInterval: TimeInterval
-    private let logger = Logger(subsystem: "com.differentai.screentext", category: "daemon")
+    private let logger = Logger(subsystem: "com.differentai.agentwatch", category: "daemon")
 
     private var observer: NSObjectProtocol?
     private var timer: Timer?

@@ -3,13 +3,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "screentext",
+    name: "agent-watch",
     platforms: [
         .macOS(.v13),
     ],
     products: [
         .library(name: "ScreenTextKit", targets: ["ScreenTextKit"]),
-        .executable(name: "screentext", targets: ["screentext"]),
+        .executable(name: "agent-watch", targets: ["agentwatch"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-testing.git", from: "0.7.0"),
@@ -27,7 +27,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "screentext",
+            name: "agentwatch",
             dependencies: ["ScreenTextKit"]
         ),
         .testTarget(

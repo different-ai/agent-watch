@@ -17,8 +17,8 @@ public final class ScreenTextAPIServer: @unchecked Sendable {
     private let host: String
     private let port: Int
     private let responder: ScreenTextAPIResponder
-    private let logger = Logger(subsystem: "com.differentai.screentext", category: "api")
-    private let queue = DispatchQueue(label: "com.differentai.screentext.api")
+    private let logger = Logger(subsystem: "com.differentai.agentwatch", category: "api")
+    private let queue = DispatchQueue(label: "com.differentai.agentwatch.api")
 
     public init(host: String, port: Int, store: SQLiteStore) {
         self.host = host

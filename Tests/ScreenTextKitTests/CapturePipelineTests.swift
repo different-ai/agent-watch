@@ -69,7 +69,7 @@ private final class QueueExtractor: TextExtractor {
 
 private func temporaryPaths(testName: String) throws -> ScreenTextPaths {
     let url = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        .appendingPathComponent("screentext-tests", isDirectory: true)
+        .appendingPathComponent("agent-watch-tests", isDirectory: true)
         .appendingPathComponent(testName + "-" + UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return ScreenTextPaths(baseDirectoryOverride: url)

@@ -9,6 +9,8 @@ public struct ScreenTextPaths: Sendable {
     public init(baseDirectoryOverride: URL? = nil, environment: [String: String] = ProcessInfo.processInfo.environment) {
         if let override = baseDirectoryOverride {
             baseDirectory = override
+        } else if let envDir = environment["AGENT_WATCH_DATA_DIR"], !envDir.isEmpty {
+            baseDirectory = URL(fileURLWithPath: envDir, isDirectory: true)
         } else if let envDir = environment["SCREENTEXT_DATA_DIR"], !envDir.isEmpty {
             baseDirectory = URL(fileURLWithPath: envDir, isDirectory: true)
         } else {
@@ -16,10 +18,10 @@ public struct ScreenTextPaths: Sendable {
             baseDirectory = home
                 .appendingPathComponent("Library", isDirectory: true)
                 .appendingPathComponent("Application Support", isDirectory: true)
-                .appendingPathComponent("ScreenText", isDirectory: true)
+                .appendingPathComponent("AgentWatch", isDirectory: true)
         }
 
-        databaseURL = baseDirectory.appendingPathComponent("screen_text.db", isDirectory: false)
+        databaseURL = baseDirectory.appendingPathComponent("agent_watch.db", isDirectory: false)
         configURL = baseDirectory.appendingPathComponent("config.json", isDirectory: false)
         logsDirectory = baseDirectory.appendingPathComponent("logs", isDirectory: true)
     }

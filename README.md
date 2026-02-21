@@ -1,4 +1,4 @@
-# screentext
+# agent-watch
 
 Swift-native, Apple Silicon-only macOS screen text memory.
 
@@ -7,7 +7,7 @@ Swift-native, Apple Silicon-only macOS screen text memory.
 - Captures text from your active screen context.
 - Uses Accessibility APIs first, Vision OCR fallback second.
 - Stores text and metadata only in local SQLite (FTS5 search).
-- Ships CLI-first (`screentext`) with launchd daemon support.
+- Ships CLI-first (`agent-watch`) with launchd daemon support.
 
 No audio, no screenshot storage, no cloud dependency.
 
@@ -26,19 +26,19 @@ swift build
 ## CLI usage
 
 ```bash
-swift run screentext help
+swift run agent-watch help
 ```
 
 Common commands:
 
 ```bash
-swift run screentext doctor
-swift run screentext capture-once
-swift run screentext capture-once --force-ocr
-swift run screentext search "invoice"
-swift run screentext ingest --text "manual line" --app "Notes"
-swift run screentext status
-swift run screentext purge --older-than 30d
+swift run agent-watch doctor
+swift run agent-watch capture-once
+swift run agent-watch capture-once --force-ocr
+swift run agent-watch search "invoice"
+swift run agent-watch ingest --text "manual line" --app "Notes"
+swift run agent-watch status
+swift run agent-watch purge --older-than 30d
 ```
 
 ## Local HTTP API
@@ -46,7 +46,7 @@ swift run screentext purge --older-than 30d
 Start API server (loopback-only by default):
 
 ```bash
-swift run screentext serve --host 127.0.0.1 --port 41733
+swift run agent-watch serve --host 127.0.0.1 --port 41733
 ```
 
 Routes:
@@ -68,7 +68,7 @@ curl -s "http://127.0.0.1:41733/screen-recording/probe"
 Screen recording proof from CLI:
 
 ```bash
-swift run screentext doctor
+swift run agent-watch doctor
 ```
 
 `doctor` prints permission status and a frame probe summary (resolution, byte count, and sample hash prefix).
@@ -77,12 +77,12 @@ swift run screentext doctor
 
 Default:
 
-`~/Library/Application Support/ScreenText/`
+`~/Library/Application Support/AgentWatch/`
 
 Override for tests or local sandbox:
 
 ```bash
-SCREENTEXT_DATA_DIR=/tmp/screentext swift run screentext status
+AGENT_WATCH_DATA_DIR=/tmp/agent-watch swift run agent-watch status
 ```
 
 ## Tests

@@ -13,7 +13,7 @@ public enum LaunchAgentError: Error, CustomStringConvertible {
 }
 
 public final class LaunchAgentManager {
-    public let label = "com.differentai.screentext"
+    public let label = "com.differentai.agentwatch"
 
     public init() {}
 
@@ -63,7 +63,7 @@ public final class LaunchAgentManager {
             </array>
             <key>EnvironmentVariables</key>
             <dict>
-                <key>SCREENTEXT_DATA_DIR</key>
+                <key>AGENT_WATCH_DATA_DIR</key>
                 <string>\(dataDirectory)</string>
             </dict>
             <key>RunAtLoad</key>

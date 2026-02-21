@@ -3,7 +3,7 @@ import ScreenTextKit
 
 @MainActor
 @main
-struct ScreenTextCLI {
+struct AgentWatchCLI {
     static func main() {
         do {
             try run(arguments: Array(CommandLine.arguments.dropFirst()))
@@ -276,7 +276,7 @@ struct ScreenTextCLI {
     private static func printUsage() {
         print(
             """
-            screentext - Swift-native macOS text memory
+            agent-watch - Swift-native macOS text memory
 
             Commands:
               help
@@ -294,7 +294,8 @@ struct ScreenTextCLI {
               config set <key> <value>
 
             Environment:
-              SCREENTEXT_DATA_DIR  Override default data directory.
+              AGENT_WATCH_DATA_DIR  Override default data directory.
+              SCREENTEXT_DATA_DIR   Legacy fallback data directory variable.
             """
         )
     }
