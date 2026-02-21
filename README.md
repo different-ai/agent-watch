@@ -17,10 +17,45 @@ No audio, no screenshot storage, no cloud dependency.
 - Apple Silicon (arm64)
 - Swift 6.2+
 
+## Easy install
+
+One-command install (clone + build + install binary):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/different-ai/agent-watch/main/scripts/install.sh | bash
+```
+
+If you already cloned the repo:
+
+```bash
+bash scripts/install.sh
+```
+
+Optional persistent launchd install:
+
+```bash
+AGENT_WATCH_INSTALL_LAUNCHD=1 bash scripts/install.sh
+```
+
 ## Build
 
 ```bash
 swift build
+```
+
+## Skill-style helper scripts
+
+The repo includes quick operational scripts adapted from the `agent-watch` skill:
+
+```bash
+bash scripts/build.sh
+bash scripts/doctor.sh
+bash scripts/capture-once.sh
+bash scripts/search.sh "invoice"
+bash scripts/run-daemon.sh
+bash scripts/run-api.sh
+bash scripts/restart.sh
+bash scripts/stop.sh
 ```
 
 ## CLI usage
@@ -83,6 +118,12 @@ Override for tests or local sandbox:
 
 ```bash
 AGENT_WATCH_DATA_DIR=/tmp/agent-watch swift run agent-watch status
+```
+
+Legacy fallback variable is also supported:
+
+```bash
+SCREENTEXT_DATA_DIR=/tmp/agent-watch swift run agent-watch status
 ```
 
 ## Tests
