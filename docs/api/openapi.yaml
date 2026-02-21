@@ -1,0 +1,424 @@
+openapi: 3.1.0
+info:
+  title: agent-watch API
+  version: 1.0.0
+  description: |
+    Minimal, deterministic API for local screen-text memory.
+
+    Design goals:
+    - Small surface area: healthz, status, search.
+    - Explicit time semantics with strict ISO8601 parsing.
+    - Deterministic ordering and cursor pagination.
+servers:
+  - url: http://127.0.0.1:41733
+    description: Local default endpoint
+tags:
+  - name: system
+  - name: search
+paths:
+  /v1/healthz:
+    get:
+      tags: [system]
+      summary: Liveness probe
+      operationId: getHealthz
+      responses:
+        '200':
+          description: Service is live
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthzResponse'
+
+  /v1/status:
+    get:
+      tags: [system]
+      summary: Capture and storage health snapshot
+      operationId: getStatus
+      responses:
+        '200':
+          description: Status payload
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/search:
+    get:
+      tags: [search]
+      summary: Search text captures with strict time filters
+      operationId: searchCaptures
+      description: |
+        Generic search endpoint with deterministic behavior.
+
+        Rules:
+        - Results are sorted by `ts_utc DESC, id DESC`.
+        - `last` and `since` are mutually exclusive.
+        - If no explicit time filter is provided, server defaults to `last=24h`.
+        - `since` and `until` must include timezone offset or `Z`.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Full-text search query. Optional for time-window browsing.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 500
+
+        - name: since
+          in: query
+          required: false
+          description: Inclusive lower bound in strict ISO8601 format.
+          schema:
+            $ref: '#/components/schemas/StrictTimestamp'
+
+        - name: until
+          in: query
+          required: false
+          description: Exclusive upper bound in strict ISO8601 format.
+          schema:
+            $ref: '#/components/schemas/StrictTimestamp'
+
+        - name: last
+          in: query
+          required: false
+          description: Relative window (`Ns`, `Nm`, `Nh`, `Nd`), for example `2m`.
+          schema:
+            type: string
+            pattern: '^[1-9][0-9]*(s|m|h|d)$'
+            examples:
+              twoMinutes:
+                value: 2m
+              oneHour:
+                value: 1h
+
+        - name: tz
+          in: query
+          required: false
+          description: IANA timezone used only for `ts_local` rendering.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+            examples:
+              losAngeles:
+                value: America/Los_Angeles
+              utc:
+                value: UTC
+
+        - name: app
+          in: query
+          required: false
+          description: Exact app-name filter. Repeat parameter to provide multiple values.
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 20
+            items:
+              type: string
+              minLength: 1
+              maxLength: 255
+
+        - name: source
+          in: query
+          required: false
+          description: Capture source filter. Repeat parameter for multiple sources.
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 3
+            items:
+              type: string
+              enum: [accessibility, ocr, synthetic]
+
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of returned results.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor from previous response.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 1024
+
+      responses:
+        '200':
+          description: Search results
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  headers:
+    XRequestID:
+      description: Stable request identifier for debugging and support.
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      headers:
+        x-request-id:
+          $ref: '#/components/headers/XRequestID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            invalidTime:
+              value:
+                error:
+                  code: INVALID_TIME
+                  message: since must include timezone offset or Z
+                  details: since=2026-02-21T13:00:00
+                  request_id: req_9f1f34c2
+    RateLimited:
+      description: Client exceeded request budget
+      headers:
+        x-request-id:
+          $ref: '#/components/headers/XRequestID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            rateLimited:
+              value:
+                error:
+                  code: RATE_LIMITED
+                  message: Too many requests
+                  details: retry after 1s
+                  request_id: req_cba0f9de
+    InternalError:
+      description: Internal service failure
+      headers:
+        x-request-id:
+          $ref: '#/components/headers/XRequestID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            internal:
+              value:
+                error:
+                  code: INTERNAL_ERROR
+                  message: unexpected failure
+                  details: null
+                  request_id: req_89d011f4
+
+  schemas:
+    StrictTimestamp:
+      type: string
+      description: ISO8601 timestamp that includes an explicit timezone offset or Z.
+      pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$'
+      examples:
+        - '2026-02-21T21:45:59Z'
+        - '2026-02-21T13:45:59-08:00'
+
+    HealthzResponse:
+      type: object
+      additionalProperties: false
+      required: [ok, service, version]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        service:
+          type: string
+          const: agent-watch
+        version:
+          type: string
+
+    StatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - request_id
+        - now_utc
+        - latest_capture_at_utc
+        - capture_freshness_ms
+        - record_count
+        - database_bytes
+        - permissions
+      properties:
+        request_id:
+          type: string
+        now_utc:
+          $ref: '#/components/schemas/StrictTimestamp'
+        latest_capture_at_utc:
+          anyOf:
+            - $ref: '#/components/schemas/StrictTimestamp'
+            - type: 'null'
+        latest_ocr_at_utc:
+          anyOf:
+            - $ref: '#/components/schemas/StrictTimestamp'
+            - type: 'null'
+        capture_freshness_ms:
+          type: integer
+          minimum: 0
+        degraded:
+          type: boolean
+          description: True when freshness exceeds policy threshold.
+        record_count:
+          type: integer
+          minimum: 0
+        database_bytes:
+          type: integer
+          minimum: 0
+        permissions:
+          type: object
+          additionalProperties: false
+          required: [accessibility_granted, screen_recording_granted]
+          properties:
+            accessibility_granted:
+              type: boolean
+            screen_recording_granted:
+              type: boolean
+
+    SearchResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, results]
+      properties:
+        meta:
+          type: object
+          additionalProperties: false
+          required:
+            - request_id
+            - window_start_utc
+            - window_end_utc
+            - tz
+            - returned
+            - next_cursor
+            - capture_freshness_ms
+          properties:
+            request_id:
+              type: string
+            query:
+              type: string
+            window_start_utc:
+              $ref: '#/components/schemas/StrictTimestamp'
+            window_end_utc:
+              $ref: '#/components/schemas/StrictTimestamp'
+            tz:
+              type: string
+            returned:
+              type: integer
+              minimum: 0
+            next_cursor:
+              anyOf:
+                - type: string
+                - type: 'null'
+            capture_freshness_ms:
+              type: integer
+              minimum: 0
+            top_apps:
+              type: array
+              maxItems: 10
+              items:
+                type: object
+                additionalProperties: false
+                required: [app, count]
+                properties:
+                  app:
+                    type: string
+                  count:
+                    type: integer
+                    minimum: 1
+
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+
+    SearchResult:
+      type: object
+      additionalProperties: false
+      required: [id, ts_utc, ts_local, app, source, snippet]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        ts_utc:
+          $ref: '#/components/schemas/StrictTimestamp'
+        ts_local:
+          $ref: '#/components/schemas/StrictTimestamp'
+        app:
+          type: string
+        window:
+          anyOf:
+            - type: string
+            - type: 'null'
+        bundle_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+        source:
+          type: string
+          enum: [accessibility, ocr, synthetic]
+        trigger:
+          type: string
+        snippet:
+          type: string
+
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, details, request_id]
+          properties:
+            code:
+              type: string
+              enum:
+                - INVALID_TIME
+                - INVALID_TZ
+                - INVALID_CURSOR
+                - INVALID_LIMIT
+                - INVALID_FILTER
+                - LAST_SINCE_CONFLICT
+                - RATE_LIMITED
+                - INTERNAL_ERROR
+            message:
+              type: string
+            details:
+              anyOf:
+                - type: string
+                - type: 'null'
+            request_id:
+              type: string

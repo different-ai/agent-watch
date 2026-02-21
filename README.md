@@ -100,6 +100,12 @@ curl -s "http://127.0.0.1:41733/search?q=invoice&limit=10"
 curl -s "http://127.0.0.1:41733/screen-recording/probe"
 ```
 
+API design and contract docs:
+
+- `docs/api/openapi.yaml`
+- `docs/api/INVARIANTS.md`
+- `docs/api/TEST_MATRIX.md`
+
 Screen recording proof from CLI:
 
 ```bash
