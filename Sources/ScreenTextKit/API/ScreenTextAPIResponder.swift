@@ -22,6 +22,33 @@ struct ScreenTextAPIResponder {
 
         do {
             switch request.path {
+            case "/", "/docs", "/openapi":
+                return json(
+                    statusCode: 200,
+                    reason: "OK",
+                    payload: DiscoveryPayload(
+                        service: "agent-watch",
+                        version: "0.1.0",
+                        openapi: "/openapi.yaml",
+                        routes: [
+                            "/",
+                            "/health",
+                            "/status",
+                            "/search",
+                            "/screen-recording/probe",
+                            "/openapi.yaml",
+                        ]
+                    )
+                )
+
+            case "/openapi.yaml":
+                return HTTPResponse(
+                    statusCode: 200,
+                    reasonPhrase: "OK",
+                    body: Data(OpenAPISpec.yaml.utf8),
+                    contentType: "application/yaml; charset=utf-8"
+                )
+
             case "/health":
                 return json(statusCode: 200, reason: "OK", payload: HealthPayload(ok: true, service: "agent-watch", version: "0.1.0"))
 
@@ -116,6 +143,13 @@ private struct HealthPayload: Codable {
     let ok: Bool
     let service: String
     let version: String
+}
+
+private struct DiscoveryPayload: Codable {
+    let service: String
+    let version: String
+    let openapi: String
+    let routes: [String]
 }
 
 private struct StatusPayload: Codable {

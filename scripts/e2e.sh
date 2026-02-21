@@ -38,6 +38,12 @@ done
 HEALTH_OUT="$(curl -s "http://127.0.0.1:$PORT/health")"
 [[ "$HEALTH_OUT" == *"\"ok\":true"* ]]
 
+DISCOVERY_OUT="$(curl -s "http://127.0.0.1:$PORT/")"
+[[ "$DISCOVERY_OUT" == *"\"openapi\":\"/openapi.yaml\""* ]]
+
+OPENAPI_OUT="$(curl -s "http://127.0.0.1:$PORT/openapi.yaml")"
+[[ "$OPENAPI_OUT" == *"openapi: 3.1.0"* ]]
+
 API_SEARCH="$(curl -s "http://127.0.0.1:$PORT/search?q=invoice&limit=5")"
 [[ "$API_SEARCH" == *"invoice number 4832"* ]]
 

@@ -86,18 +86,22 @@ swift run agent-watch serve --host 127.0.0.1 --port 41733
 
 Routes:
 
+- `GET /` (discovery)
 - `GET /health`
 - `GET /status`
 - `GET /search?q=<query>&limit=<n>&app=<name>`
 - `GET /screen-recording/probe`
+- `GET /openapi.yaml`
 
 Examples:
 
 ```bash
 curl -s "http://127.0.0.1:41733/health"
+curl -s "http://127.0.0.1:41733/"
 curl -s "http://127.0.0.1:41733/status"
 curl -s "http://127.0.0.1:41733/search?q=invoice&limit=10"
 curl -s "http://127.0.0.1:41733/screen-recording/probe"
+curl -s "http://127.0.0.1:41733/openapi.yaml"
 ```
 
 API design and contract docs:

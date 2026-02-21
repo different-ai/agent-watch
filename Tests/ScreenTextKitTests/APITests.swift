@@ -35,6 +35,17 @@ struct APITests {
         #expect((healthJSON["ok"] as? Bool) == true)
         #expect((healthJSON["service"] as? String) == "agent-watch")
 
+        let discovery = responder.respond(to: HTTPRequest(method: "GET", path: "/", query: [:]))
+        #expect(discovery.statusCode == 200)
+        let discoveryJSON = try parseObject(discovery.body)
+        #expect((discoveryJSON["openapi"] as? String) == "/openapi.yaml")
+
+        let openapi = responder.respond(to: HTTPRequest(method: "GET", path: "/openapi.yaml", query: [:]))
+        #expect(openapi.statusCode == 200)
+        #expect(openapi.contentType.contains("yaml"))
+        let openapiText = String(data: openapi.body, encoding: .utf8) ?? ""
+        #expect(openapiText.contains("openapi: 3.1.0"))
+
         let status = responder.respond(to: HTTPRequest(method: "GET", path: "/status", query: [:]))
         #expect(status.statusCode == 200)
         let statusJSON = try parseObject(status.body)
