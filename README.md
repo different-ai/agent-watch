@@ -4,6 +4,11 @@
 
 It uses a mix of accessibility, and native ocr, and exposes a few straight forward API end point.
 
+## Install prompt
+
+```
+Go on https://github.com/different-ai/agent-watch install agent-watch and test it
+```
 
 
 
