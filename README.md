@@ -4,8 +4,6 @@
 
 It uses a mix of accessibility, and native ocr, and exposes a few straight forward API end point.
 
-Just point your agents to https://github.com/different-ai/openwork and it will know what to do.
-
 
 
 
