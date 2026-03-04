@@ -27,6 +27,10 @@ public final class DaemonRunner {
     }
 
     public func run() -> Never {
+        // FIX: Register with WindowServer for proper screen capture
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+
         observer = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
@@ -55,7 +59,7 @@ public final class DaemonRunner {
         capture(trigger: .manual)
         logger.info("Daemon started")
 
-        RunLoop.main.run()
+        app.run()
         fatalError("Run loop exited unexpectedly")
     }
 
