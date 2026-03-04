@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreImage
 import Foundation
 import ImageIO
 import Vision
@@ -7,7 +8,7 @@ public final class OCRTextExtractor {
     private let minimumTextHeight: Float
     private let recognitionLevel: VNRequestTextRecognitionLevel
 
-    public init(minimumTextHeight: Float = 0.005, recognitionLevel: VNRequestTextRecognitionLevel = .accurate) {
+    public init(minimumTextHeight: Float = 0.002, recognitionLevel: VNRequestTextRecognitionLevel = .accurate) {
         self.minimumTextHeight = minimumTextHeight
         self.recognitionLevel = recognitionLevel
     }
@@ -17,7 +18,24 @@ public final class OCRTextExtractor {
             return nil
         }
 
-        return try extractText(from: image)
+        // Run OCR on both original and inverted image, keep the one with more text.
+        // Dark UIs (WhatsApp, Slack, etc.) yield much more text when colors are inverted.
+        let originalText = try extractText(from: image)
+        let invertedText: String?
+        if let inverted = invertColors(image) {
+            invertedText = try extractText(from: inverted)
+        } else {
+            invertedText = nil
+        }
+
+        let orig = originalText ?? ""
+        let inv = invertedText ?? ""
+
+        if orig.isEmpty && inv.isEmpty {
+            return nil
+        }
+
+        return inv.count > orig.count ? inv : orig
     }
 
     public func extractText(fromImageURL imageURL: URL) throws -> String? {
@@ -53,5 +71,16 @@ public final class OCRTextExtractor {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    /// Invert image colors using CoreImage — turns dark UIs light for better OCR
+    private func invertColors(_ image: CGImage) -> CGImage? {
+        let ciImage = CIImage(cgImage: image)
+        guard let filter = CIFilter(name: "CIColorInvert") else { return nil }
+        filter.setValue(ciImage, forKey: kCIInputImageKey)
+        guard let output = filter.outputImage else { return nil }
+
+        let context = CIContext(options: [.useSoftwareRenderer: false])
+        return context.createCGImage(output, from: output.extent)
     }
 }

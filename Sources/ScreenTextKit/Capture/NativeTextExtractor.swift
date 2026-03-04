@@ -27,19 +27,25 @@ public final class NativeTextExtractor: TextExtractor {
     public func extract() throws -> ExtractedText? {
         let metadata = metadataProvider.currentMetadata()
 
-        if !forceOCR {
-            if let accessibilityText = accessibilityExtractor.extractText(),
-               accessibilityText.count >= minimumAccessibilityChars {
-                return ExtractedText(text: accessibilityText, source: .accessibility, metadata: metadata)
-            }
+        let accessibilityText = accessibilityExtractor.extractText()
+        let hasGoodAccessibility = (accessibilityText?.count ?? 0) >= minimumAccessibilityChars
+
+        // Always run OCR too (if enabled) and keep the longer result
+        var ocrText: String? = nil
+        if ocrEnabled {
+            ocrText = try ocrExtractor.extractText()
         }
 
-        guard ocrEnabled else {
-            return nil
-        }
+        let accLen = accessibilityText?.count ?? 0
+        let ocrLen = ocrText?.count ?? 0
 
-        if let ocrText = try ocrExtractor.extractText(), !ocrText.isEmpty {
-            return ExtractedText(text: ocrText, source: .ocr, metadata: metadata)
+        // Return whichever extracted more text
+        if ocrLen > accLen && ocrLen > 0 {
+            return ExtractedText(text: ocrText!, source: .ocr, metadata: metadata)
+        } else if accLen > 0 && hasGoodAccessibility {
+            return ExtractedText(text: accessibilityText!, source: .accessibility, metadata: metadata)
+        } else if ocrLen > 0 {
+            return ExtractedText(text: ocrText!, source: .ocr, metadata: metadata)
         }
 
         return nil
