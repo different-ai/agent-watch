@@ -14,8 +14,8 @@ public final class FrameBufferStore {
         paths: ScreenTextPaths,
         retentionSeconds: Int,
         maxFrames: Int,
-        maxDimension: Int = 1280,
-        jpegQuality: Double = 0.45
+        maxDimension: Int = 2560,
+        jpegQuality: Double = 0.85
     ) {
         self.paths = paths
         self.retentionSeconds = retentionSeconds
