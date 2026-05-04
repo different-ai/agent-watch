@@ -4,14 +4,6 @@
 
 It uses a mix of accessibility, and native ocr, and exposes a few straight forward API end point.
 
-## Install prompt
-
-```
-Go on https://github.com/different-ai/agent-watch install agent-watch and test it
-```
-
-
-
 ## What it does
 
 - Captures text from your active screen context.
@@ -35,6 +27,18 @@ One-command install (clone + build + install binary):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/different-ai/agent-watch/main/scripts/install.sh | bash
+```
+
+The installer places the CLI at `$HOME/.local/bin/agent-watch`. If your shell does not find `agent-watch`, either run the full path or add it to your PATH:
+
+```bash
+$HOME/.local/bin/agent-watch serve --capture
+```
+
+For fish:
+
+```fish
+fish_add_path ~/.local/bin
 ```
 
 If you already cloned the repo:
@@ -101,10 +105,10 @@ swift run agent-watch purge --older-than 30d
 
 ## Local HTTP API
 
-Start API server (loopback-only by default):
+Start the local API server with live capture enabled (loopback-only by default):
 
 ```bash
-swift run agent-watch serve --host 127.0.0.1 --port 41733
+$HOME/.local/bin/agent-watch serve --capture
 ```
 
 Routes:

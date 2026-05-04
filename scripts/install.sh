@@ -51,6 +51,7 @@ if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
   echo ""
   echo "Add to PATH:"
   echo "  export PATH=\"$BIN_DIR:\$PATH\""
+  echo "  fish_add_path \"$BIN_DIR\""
 fi
 
 echo ""
@@ -69,6 +70,6 @@ echo "  open \"x-apple.systempreferences:com.apple.preference.security?Privacy_A
 echo "  open \"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture\""
 echo ""
 echo "Quick start:"
-echo "  agent-watch capture-now"
-echo "  agent-watch search-buffer-ocr \"invoice\" --seconds 120 --limit 5"
-echo "  agent-watch serve --host 127.0.0.1 --port 41733"
+echo "  $BIN_DIR/agent-watch capture-now"
+echo "  $BIN_DIR/agent-watch search-buffer-ocr \"invoice\" --seconds 120 --limit 5"
+echo "  $BIN_DIR/agent-watch serve --capture"
