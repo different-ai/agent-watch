@@ -143,9 +143,27 @@ struct AgentWatchCLI {
         let options = try ParsedOptions(arguments: arguments)
         let host = options.values["host"] ?? "127.0.0.1"
         let port = Int(options.values["port"] ?? "41733") ?? 41733
+        let captureEnabled = options.flags.contains("capture")
 
+        let config = try ScreenTextConfiguration.loadOrCreate(paths: paths)
         let store = try SQLiteStore(paths: paths)
-        let server = ScreenTextAPIServer(host: host, port: port, store: store)
+
+        let pipeline: CapturePipeline?
+        if captureEnabled {
+            let extractor = NativeTextExtractor(
+                minimumAccessibilityChars: config.minimumAccessibilityChars,
+                ocrEnabled: config.ocrEnabled
+            )
+            pipeline = CapturePipeline(
+                store: store,
+                extractor: extractor,
+                duplicateWindowSeconds: TimeInterval(config.duplicateWindowSeconds)
+            )
+        } else {
+            pipeline = nil
+        }
+
+        let server = ScreenTextAPIServer(host: host, port: port, store: store, pipeline: pipeline)
         _ = try server.run()
     }
 

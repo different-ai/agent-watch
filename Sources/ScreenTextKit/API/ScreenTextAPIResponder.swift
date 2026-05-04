@@ -2,22 +2,35 @@ import Foundation
 
 struct ScreenTextAPIResponder {
     private let store: SQLiteStore
+    private let pipeline: CapturePipeline?
     private let permissions: () -> PermissionSnapshot
     private let screenProbe: () -> ScreenRecordingProbe
 
     init(
         store: SQLiteStore,
+        pipeline: CapturePipeline? = nil,
         permissions: @escaping () -> PermissionSnapshot,
         screenProbe: @escaping () -> ScreenRecordingProbe = PermissionDoctor.probeScreenRecording
     ) {
         self.store = store
+        self.pipeline = pipeline
         self.permissions = permissions
         self.screenProbe = screenProbe
     }
 
     func respond(to request: HTTPRequest) -> HTTPResponse {
+        // POST routes
+        if request.method == "POST" {
+            switch request.path {
+            case "/capture":
+                return handleCapture(request: request)
+            default:
+                return json(statusCode: 405, reason: "Method Not Allowed", payload: APIErrorPayload(error: "method_not_allowed", message: "POST not supported for this route."))
+            }
+        }
+
         guard request.method == "GET" else {
-            return json(statusCode: 405, reason: "Method Not Allowed", payload: APIErrorPayload(error: "method_not_allowed", message: "Only GET is supported."))
+            return json(statusCode: 405, reason: "Method Not Allowed", payload: APIErrorPayload(error: "method_not_allowed", message: "Only GET and POST are supported."))
         }
 
         do {
@@ -28,13 +41,15 @@ struct ScreenTextAPIResponder {
                     reason: "OK",
                     payload: DiscoveryPayload(
                         service: "agent-watch",
-                        version: "0.1.0",
+                        version: "0.2.0",
                         openapi: "/openapi.yaml",
                         routes: [
                             "/",
                             "/health",
                             "/status",
                             "/search",
+                            "/latest",
+                            "/capture (POST)",
                             "/screen-recording/probe",
                             "/openapi.yaml",
                         ]
@@ -50,7 +65,7 @@ struct ScreenTextAPIResponder {
                 )
 
             case "/health":
-                return json(statusCode: 200, reason: "OK", payload: HealthPayload(ok: true, service: "agent-watch", version: "0.1.0"))
+                return json(statusCode: 200, reason: "OK", payload: HealthPayload(ok: true, service: "agent-watch", version: "0.2.0"))
 
             case "/status":
                 let status = try store.status()
@@ -64,6 +79,34 @@ struct ScreenTextAPIResponder {
                         databaseBytes: status.databaseBytes,
                         accessibilityGranted: snapshot.accessibilityGranted,
                         screenRecordingGranted: snapshot.screenRecordingGranted
+                    )
+                )
+
+            case "/latest":
+                let limit: Int
+                if let rawLimit = request.query["limit"], let parsed = Int(rawLimit) {
+                    limit = min(max(parsed, 1), 50)
+                } else {
+                    limit = 1
+                }
+                let results = try store.latest(limit: limit)
+                return json(
+                    statusCode: 200,
+                    reason: "OK",
+                    payload: LatestPayload(
+                        count: results.count,
+                        results: results.map {
+                            LatestResultPayload(
+                                id: $0.id,
+                                timestamp: $0.timestamp,
+                                appName: $0.appName,
+                                windowTitle: $0.windowTitle,
+                                bundleID: $0.bundleID,
+                                source: $0.source.rawValue,
+                                trigger: $0.trigger.rawValue,
+                                text: $0.snippet
+                            )
+                        }
                     )
                 )
 
@@ -134,6 +177,59 @@ struct ScreenTextAPIResponder {
         }
     }
 
+    private func handleCapture(request: HTTPRequest) -> HTTPResponse {
+        guard let pipeline else {
+            return json(
+                statusCode: 503,
+                reason: "Service Unavailable",
+                payload: APIErrorPayload(
+                    error: "capture_unavailable",
+                    message: "Live capture is not available. Start the server with --capture to enable."
+                )
+            )
+        }
+
+        do {
+            let outcome = try pipeline.capture(trigger: .manual)
+            switch outcome {
+            case .stored(let record):
+                return json(statusCode: 200, reason: "OK", payload: CaptureResultPayload(
+                    ok: true,
+                    outcome: "stored",
+                    appName: record.appName,
+                    windowTitle: record.windowTitle,
+                    source: record.source.rawValue,
+                    textLength: record.textLength,
+                    text: record.textContent
+                ))
+            case .skippedDuplicate:
+                // Return the latest record instead so the caller still gets data
+                let latest = try store.latest(limit: 1).first
+                return json(statusCode: 200, reason: "OK", payload: CaptureResultPayload(
+                    ok: true,
+                    outcome: "duplicate",
+                    appName: latest?.appName,
+                    windowTitle: latest?.windowTitle,
+                    source: latest?.source.rawValue,
+                    textLength: latest?.snippet.count,
+                    text: latest?.snippet
+                ))
+            case .skippedNoText:
+                return json(statusCode: 200, reason: "OK", payload: CaptureResultPayload(
+                    ok: true,
+                    outcome: "no_text",
+                    appName: nil, windowTitle: nil, source: nil, textLength: nil, text: nil
+                ))
+            }
+        } catch {
+            return json(
+                statusCode: 500,
+                reason: "Internal Server Error",
+                payload: APIErrorPayload(error: "capture_failed", message: String(describing: error))
+            )
+        }
+    }
+
     private func json<T: Encodable>(statusCode: Int, reason: String, payload: T) -> HTTPResponse {
         HTTPResponse(statusCode: statusCode, reasonPhrase: reason, body: JSONBody.encode(payload))
     }
@@ -160,6 +256,22 @@ private struct StatusPayload: Codable {
     let screenRecordingGranted: Bool
 }
 
+private struct LatestPayload: Codable {
+    let count: Int
+    let results: [LatestResultPayload]
+}
+
+private struct LatestResultPayload: Codable {
+    let id: Int64
+    let timestamp: Date
+    let appName: String
+    let windowTitle: String?
+    let bundleID: String?
+    let source: String
+    let trigger: String
+    let text: String
+}
+
 private struct SearchPayload: Codable {
     let query: String
     let count: Int
@@ -183,6 +295,16 @@ private struct ScreenRecordingProbePayload: Codable {
     let height: Int
     let byteCount: Int
     let sampleHash: String?
+}
+
+private struct CaptureResultPayload: Codable {
+    let ok: Bool
+    let outcome: String
+    let appName: String?
+    let windowTitle: String?
+    let source: String?
+    let textLength: Int?
+    let text: String?
 }
 
 private struct APIErrorPayload: Codable {

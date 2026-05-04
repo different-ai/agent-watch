@@ -194,6 +194,42 @@ public final class SQLiteStore {
         return StoreStatus(recordCount: count, lastCaptureAt: lastCapture, databaseBytes: bytes)
     }
 
+    public func latest(limit: Int = 1) throws -> [SearchResult] {
+        let sql = """
+        SELECT id, timestamp, app_name, window_title, bundle_id,
+               text_source, capture_trigger, text_content
+        FROM captures
+        ORDER BY timestamp DESC
+        LIMIT ?;
+        """
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            throw SQLiteStoreError.prepare(lastErrorMessage())
+        }
+        defer { sqlite3_finalize(statement) }
+        sqlite3_bind_int(statement, 1, Int32(min(max(limit, 1), 50)))
+
+        var results: [SearchResult] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let id = sqlite3_column_int64(statement, 0)
+            let timestampRaw = stringColumn(statement, at: 1) ?? ""
+            guard let timestamp = formatter.date(from: timestampRaw) else {
+                throw SQLiteStoreError.invalidDate(timestampRaw)
+            }
+            results.append(SearchResult(
+                id: id,
+                timestamp: timestamp,
+                appName: stringColumn(statement, at: 2) ?? "Unknown",
+                windowTitle: stringColumn(statement, at: 3),
+                bundleID: stringColumn(statement, at: 4),
+                source: TextSource(rawValue: stringColumn(statement, at: 5) ?? "") ?? .accessibility,
+                trigger: CaptureTrigger(rawValue: stringColumn(statement, at: 6) ?? "") ?? .manual,
+                snippet: stringColumn(statement, at: 7) ?? ""
+            ))
+        }
+        return results
+    }
+
     @discardableResult
     public func purge(olderThan: Date) throws -> Int {
         let sql = "DELETE FROM captures WHERE timestamp < ?;"
