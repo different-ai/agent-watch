@@ -20,10 +20,14 @@ public final class ScreenTextAPIServer: @unchecked Sendable {
     private let logger = Logger(subsystem: "com.differentai.agentwatch", category: "api")
     private let queue = DispatchQueue(label: "com.differentai.agentwatch.api")
 
-    public init(host: String, port: Int, store: SQLiteStore) {
+    public init(host: String, port: Int, store: SQLiteStore, pipeline: CapturePipeline? = nil) {
         self.host = host
         self.port = port
-        responder = ScreenTextAPIResponder(store: store, permissions: PermissionDoctor.snapshot)
+        responder = ScreenTextAPIResponder(
+            store: store,
+            pipeline: pipeline,
+            permissions: PermissionDoctor.snapshot
+        )
     }
 
     @MainActor

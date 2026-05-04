@@ -1,0 +1,16 @@
+{
+  "name": "agent-watch-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for agent-watch — exposes screen text capture and search as MCP tools",
+  "author": "OpenWork <support@openworklabs.com>",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "agent-watch-mcp": "./index.mjs"
+  },
+  "files": ["index.mjs"],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
+  }
+}
